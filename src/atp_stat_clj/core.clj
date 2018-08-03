@@ -41,21 +41,59 @@
     stat-seq))
 
 ; key-item eg. "play-name"
-(defn gen-map [stat-seq key-item item-map pred]
+(defn gen-map [stat-seq key-idx pred]
   (loop [inner-seq stat-seq
-         res-map (into sorted-map {"R" 1})]
+         res-map {}]
     (if (empty? inner-seq)
       res-map
-      (do
-        (let [key-ele (get (first inner-seq) (get item-map key-item))]
-          (assoc res-map
-            {key-ele (+ (get res-map key-ele 0) (pred (first inner-seq)))}))
-        (recur (next inner-seq)
-               res-map)))))
+      (recur (next inner-seq)
+             (assoc res-map
+               (get (first inner-seq) key-idx)
+               (+ (get res-map (get (first inner-seq) key-idx) 0) (pred (first inner-seq))))))))
 
-(gen-map all-stats "winner_name" item-map #(if (empty? %) 1 0))
+(def map-winner-count
+  (gen-map all-stats (get item-map "winner_name") #(if (empty? %) 0 1)))
 
-(assoc (sorted-map) "nobody" 1)
+(def map-loser-count
+  (gen-map all-stats (get item-map "loser_name") #(if (empty? %) 0 1)))
+
+(sort #(if (< (val %1) (val %2))
+         false
+         true)
+      map-winner-count)
+
+(defn merge-map [map-1 map-2 pred]
+  (loop [seq-keys (keys (into map-1 map-2))
+         res-map {}]
+    (if (empty? seq-keys)
+      res-map
+      (recur (next seq-keys)
+             (assoc res-map
+               (first seq-keys)
+               (pred (get map-1 (first seq-keys) 0)
+                     (get map-2 (first seq-keys) 0)))))))
+(def map-winner-loser-count
+  (merge-map map-winner-count map-loser-count #(+ %1 %2)))
+
+(def map-winner-rate
+  (merge-map map-winner-count map-loser-count #(if (= 0 %2)
+                                                 1
+                                                 (/ %1 (+ %1 %2)))))
+
+(sort #(if (< (val %1) (val %2))
+         false
+         true)
+      map-winner-loser-count)
+
+(sort #(if (< (val %1) (val %2))
+         false
+         true)
+      map-winner-rate)
+
+
+(val (first (assoc {} "nobody" 1)))
+(into {:a 1 :b 2 :c 3} {:a 2})
+
 
 (get item-map "winner_name")
 
