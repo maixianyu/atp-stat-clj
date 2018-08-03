@@ -14,8 +14,6 @@
     (range (count (line-seq (io/reader (str dir item-map-file)))))
     ))
 
-item-map
-
 (defn file-path-list [dir-path file-list]
   (map #(str dir-path %)
     (line-seq
@@ -36,10 +34,28 @@ item-map
 
 (count all-stats)
 
+; item-name eg. "order-id"
 (defn grep-item [stat-seq item-name item-map pred]
   (filter
     #(pred (get % (get item-map item-name)))
     stat-seq))
+
+; key-item eg. "play-name"
+(defn gen-map [stat-seq key-item item-map pred]
+  (loop [inner-seq stat-seq
+         res-map (into sorted-map {"R" 1})]
+    (if (empty? inner-seq)
+      res-map
+      (do
+        (let [key-ele (get (first inner-seq) (get item-map key-item))]
+          (assoc res-map
+            {key-ele (+ (get res-map key-ele 0) (pred (first inner-seq)))}))
+        (recur (next inner-seq)
+               res-map)))))
+
+(gen-map all-stats "winner_name" item-map #(if (empty? %) 1 0))
+
+(assoc (sorted-map) "nobody" 1)
 
 (get item-map "winner_name")
 
@@ -50,28 +66,4 @@ item-map
              item-map
              #(str/includes? % "Roger Federer"))))
 
-(def lose_count_roger
-  (count (grep-item all-stats
-             "loser_name"
-             item-map
-             #(str/includes? % "Roger Federer"))))
 
-(def win_count_dj
-  (count (grep-item all-stats
-             "winner_name"
-             item-map
-             #(str/includes? % "Novak Djokovic"))))
-
-(def lose_count_dj
-  (count (grep-item all-stats
-             "loser_name"
-             item-map
-             #(str/includes? % "Novak Djokovic"))))
-
-; 81.9%
-(/ win_count_roger (+ win_count_roger lose_count_roger))
-win_count_dj
-lose_count_dj
-
-; 83.2%
-(/ win_count_dj (+ lose_count_dj win_count_dj))
