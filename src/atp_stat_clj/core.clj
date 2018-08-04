@@ -35,33 +35,34 @@
 (count all-stats)
 
 ; item-name eg. "order-id"
-(defn grep-item [stat-seq item-name item-map pred]
-  (filter
-    #(pred (get % (get item-map item-name)))
-    stat-seq))
+(defn grep-item [stat-seq item-name-seq pred]
+  (defn make-data-vec [d-vec i-vec]
+    (map #(nth d-vec %) i-vec))
+  (loop [seq-tmp item-name-seq
+         idx-vec []]
+    (if (empty? seq-tmp)
+      (filter
+        #(pred (make-data-vec % idx-vec))
+        stat-seq)
+      (recur (next seq-tmp)
+             (conj idx-vec (get item-map (first seq-tmp)))))))
+
 
 ; key-item eg. "play-name"
-(defn gen-map [stat-seq key-idx pred]
-  (loop [inner-seq stat-seq
-         res-map {}]
-    (if (empty? inner-seq)
-      res-map
-      (recur (next inner-seq)
-             (assoc res-map
-               (get (first inner-seq) key-idx)
-               (+ (get res-map (get (first inner-seq) key-idx) 0) (pred (first inner-seq))))))))
+(defn gen-map [stat-seq key-name pred]
+  (let [key-idx (get item-map key-name)]
+    (loop [inner-seq stat-seq
+           res-map {}]
+      (if (empty? inner-seq)
+        res-map
+        (recur (next inner-seq)
+               (assoc res-map
+                 (get (first inner-seq) key-idx)
+                 (+ (get res-map (get (first inner-seq) key-idx) 0) (pred (first inner-seq)))))))))
 
-(def map-winner-count
-  (gen-map all-stats (get item-map "winner_name") #(if (empty? %) 0 1)))
 
-(def map-loser-count
-  (gen-map all-stats (get item-map "loser_name") #(if (empty? %) 0 1)))
 
-(sort #(if (< (val %1) (val %2))
-         false
-         true)
-      map-winner-count)
-
+; merge two maps
 (defn merge-map [map-1 map-2 pred]
   (loop [seq-keys (keys (into map-1 map-2))
          res-map {}]
@@ -72,36 +73,9 @@
                (first seq-keys)
                (pred (get map-1 (first seq-keys) 0)
                      (get map-2 (first seq-keys) 0)))))))
-(def map-winner-loser-count
-  (merge-map map-winner-count map-loser-count #(+ %1 %2)))
-
-(def map-winner-rate
-  (merge-map map-winner-count map-loser-count #(if (= 0 %2)
-                                                 1
-                                                 (/ %1 (+ %1 %2)))))
-
-(sort #(if (< (val %1) (val %2))
-         false
-         true)
-      map-winner-loser-count)
-
-(sort #(if (< (val %1) (val %2))
-         false
-         true)
-      map-winner-rate)
 
 
-(val (first (assoc {} "nobody" 1)))
-(into {:a 1 :b 2 :c 3} {:a 2})
 
 
-(get item-map "winner_name")
-
-
-(def win_count_roger
-  (count (grep-item all-stats
-             "winner_name"
-             item-map
-             #(str/includes? % "Roger Federer"))))
 
 
